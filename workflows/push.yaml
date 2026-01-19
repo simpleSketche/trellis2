@@ -1,57 +1,60 @@
 name: Push to Replicate
 
 on:
-  # Workflow dispatch allows you to manually trigger the workflow from GitHub.com
-  # Go to your repo, click "Actions", click "Push to Replicate", click "Run workflow"
+  # Manual trigger from GitHub UI
   workflow_dispatch:
     inputs:
       model_name:
-        description: 'Enter the model name, like "alice/bunny-detector". If unset, this will default to the value of `image` in cog.yaml.'
-  # # Uncomment these lines to trigger the workflow on every push to the main branch
+        description: 'Optional. Format: username/model-name (e.g. simplesketche/trellis-2). If empty, uses image from cog.yaml.'
+        required: false
+        default: ''
+
+  # Uncomment this block if you want auto-push on every commit to main
   # push:
   #   branches:
   #     - main
 
 jobs:
   push_to_replicate:
-    name: Push to Replicate
-
-    # If your model is large, the default GitHub Actions runner may not
-    # have enough disk space. If you need more space you can set up a
-    # bigger runner on GitHub.
+    name: Build & Push Cog Model
     runs-on: ubuntu-latest
 
     steps:
-      # This action cleans up disk space to make more room for your
-      # model code, weights, etc.
+      # Free disk space (important for large CUDA / model builds)
       - name: Free disk space
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: false
           docker-images: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
 
-      - name: Checkout
+      # Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # This action installs Docker buildx and Cog (and optionally CUDA)
+      # Install Docker buildx + Cog CLI
       - name: Setup Cog
         uses: replicate/setup-cog@v2
         with:
-          # If you add a CI auth token to your GitHub repository secrets,
-          # the action will authenticate with Replicate automatically so you
-          # can push your model without needing to pass in a token.
-          #
-          # To genereate a CLI auth token, run `cog login` or visit this page
-          # in your browser: https://replicate.com/account/api-token
           token: ${{ secrets.REPLICATE_CLI_AUTH_TOKEN }}
 
-      # If you trigger the workflow manually, you can specify the model name.
-      # If you leave it blank (or if the workflow is triggered by a push), the
-      # model name will be derived from the `image` value in cog.yaml.
+      # Push model to Replicate
       - name: Push to Replicate
+        env:
+          # Required for gated Hugging Face models (e.g. DINOv3)
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HUGGINGFACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          echo "Starting Cog push..."
+
           if [ -n "${{ inputs.model_name }}" ]; then
+            echo "Using model name from input: ${{ inputs.model_name }}"
             cog push r8.im/${{ inputs.model_name }}
           else
+            echo "Using image name from cog.yaml"
             cog push
           fi
