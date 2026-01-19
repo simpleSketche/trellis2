@@ -1,9 +1,9 @@
 # Configuration for Cog - https://github.com/replicate/cog
 build:
   gpu: true
-  cuda: "12.4"
+  cuda: "12.1"
   python_version: "3.10"
-  
+
   system_packages:
     - "git"
     - "wget"
@@ -13,10 +13,8 @@ build:
     - "libglib2.0-0"
     - "libegl1"
     - "libgles2"
-  
+
   python_packages:
-    - "torch==2.6.0"
-    - "torchvision==0.21.0"
     - "imageio==2.36.0"
     - "imageio-ffmpeg==0.5.1"
     - "tqdm==4.67.1"
@@ -43,50 +41,53 @@ build:
     # Set CUDA architectures for building without GPU
     # 8.0 = A100, 8.6 = RTX 30xx, 8.9 = RTX 4090, 9.0 = H100
     - "mkdir -p /tmp/extensions"
-    
+
     # Install utils3d
     - "pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8"
-    
+
+    - "pip install --upgrade pip"
+    - "pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu121"
+
     # Install flash-attn with CUDA arch list
     - "TORCH_CUDA_ARCH_LIST='8.0;8.6;8.9;9.0' pip install flash-attn==2.7.3 --no-build-isolation"
-    
+
     # Install nvdiffrast
     - "git clone -b v0.4.0 https://github.com/NVlabs/nvdiffrast.git /tmp/extensions/nvdiffrast"
     - "TORCH_CUDA_ARCH_LIST='8.0;8.6;8.9;9.0' pip install /tmp/extensions/nvdiffrast --no-build-isolation"
-    
+
     # Install nvdiffrec
     - "git clone -b renderutils https://github.com/JeffreyXiang/nvdiffrec.git /tmp/extensions/nvdiffrec"
     - "TORCH_CUDA_ARCH_LIST='8.0;8.6;8.9;9.0' pip install /tmp/extensions/nvdiffrec --no-build-isolation"
-    
+
     # Install CuMesh
     - "git clone https://github.com/JeffreyXiang/CuMesh.git /tmp/extensions/CuMesh --recursive"
     - "TORCH_CUDA_ARCH_LIST='8.0;8.6;8.9;9.0' pip install /tmp/extensions/CuMesh --no-build-isolation"
-    
+
     # Install FlexGEMM
     - "git clone https://github.com/JeffreyXiang/FlexGEMM.git /tmp/extensions/FlexGEMM --recursive"
     - "TORCH_CUDA_ARCH_LIST='8.0;8.6;8.9;9.0' pip install /tmp/extensions/FlexGEMM --no-build-isolation"
-    
+
     # Install o-voxel (copy from project and install eigen)
     - "cp -r o-voxel /tmp/extensions/o-voxel"
     - "git clone --depth 1 https://gitlab.com/libeigen/eigen.git /tmp/extensions/o-voxel/third_party/eigen"
     - "TORCH_CUDA_ARCH_LIST='8.0;8.6;8.9;9.0' pip install /tmp/extensions/o-voxel --no-build-isolation"
-    
+
     # Clean up
     - "rm -rf /tmp/extensions"
-    
+
     # ============================================
     # PRE-DOWNLOAD MODELS (Replace YOUR_HF_TOKEN)
     # ============================================
     # Login to HuggingFace
-    - 'huggingface-cli login --token ${HF_TOKEN}'
-    
+    # - "huggingface-cli login --token ${HF_TOKEN}"
+
     # Pre-download TRELLIS2 model
-    - "python -c \"from huggingface_hub import snapshot_download; snapshot_download('microsoft/TRELLIS.2-4B', local_dir='/src/models/TRELLIS.2-4B')\""
-    
+    - 'python -c "from huggingface_hub import snapshot_download; snapshot_download(''microsoft/TRELLIS.2-4B'', local_dir=''/src/models/TRELLIS.2-4B'')"'
+
     # Pre-download DINOv3 (gated)
-    - "python -c \"from huggingface_hub import snapshot_download; snapshot_download('facebook/dinov3-vitl16-pretrain-lvd1689m', local_dir='/src/models/dinov3')\""
-    
+    - 'python -c "from huggingface_hub import snapshot_download; snapshot_download(''facebook/dinov3-vitl16-pretrain-lvd1689m'', local_dir=''/src/models/dinov3'')"'
+
     # Pre-download RMBG-2.0 (gated)
-    - "python -c \"from huggingface_hub import snapshot_download; snapshot_download('briaai/RMBG-2.0', local_dir='/src/models/rmbg')\""
+    - 'python -c "from huggingface_hub import snapshot_download; snapshot_download(''briaai/RMBG-2.0'', local_dir=''/src/models/rmbg'')"'
 
 predict: "predict.py:Predictor"
