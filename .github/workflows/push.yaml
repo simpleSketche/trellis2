@@ -2,11 +2,6 @@ name: Push to Replicate
 
 on:
   workflow_dispatch:
-    inputs:
-      model_name:
-        description: 'Optional: "owner/model" (e.g. "simplesketche/trellis-2"). If empty, uses `image:` in cog.yaml.'
-        required: false
-        default: ""
 
 jobs:
   push_to_replicate:
@@ -14,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
 
-    # Prevent overlapping pushes to Replicate
     concurrency:
       group: replicate-push
       cancel-in-progress: true
@@ -40,42 +34,19 @@ jobs:
       - name: Setup Cog
         uses: replicate/setup-cog@v2
         with:
-          # Store this in GitHub repo Settings -> Secrets and variables -> Actions -> New repository secret
-          # Name: REPLICATE_CLI_AUTH_TOKEN
           token: ${{ secrets.REPLICATE_CLI_AUTH_TOKEN }}
-
-      - name: Sanity check repo
-        run: |
-          ls -la
-          test -f cog.yaml
-          echo "Found cog.yaml"
 
       - name: Push to Replicate
         env:
-          # Hugging Face token (needed for gated models)
-          # Add repo secret: HF_TOKEN
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HUGGINGFACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
-
-          # Recommended to avoid slow HF downloads / odd caching paths
           HF_HOME: /tmp/hf
           TRANSFORMERS_CACHE: /tmp/hf/transformers
           HF_HUB_ENABLE_HF_TRANSFER: "1"
-
-          # Keep builds from going OOM due to over-parallel compilation
           MAKEFLAGS: "-j2"
           CMAKE_BUILD_PARALLEL_LEVEL: "2"
           NINJAFLAGS: "-j2"
           MAX_JOBS: "2"
         run: |
           set -euxo pipefail
-
-          # If you provided model_name, push to that explicit destination:
-          # e.g. r8.im/simplesketche/trellis-2
-          if [ -n "${{ inputs.model_name }}" ]; then
-            cog push "r8.im/${{ inputs.model_name }}"
-          else
-            # Otherwise use the `image:` field in cog.yaml (recommended),
-            # or Cog will prompt/error if not present.
-            cog push
-          fi
+          cog push r8.im/simplesketche/trellis-2
