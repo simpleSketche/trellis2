@@ -56,14 +56,13 @@ build:
     - update-alternatives --set gcc /usr/bin/gcc-11
     - update-alternatives --set g++ /usr/bin/g++-11
 
-    # ---- Force conservative builds in CI (prevents nvcc segfaults) ----
+    # ---- Conservative builds in CI (prevents nvcc segfaults) ----
     - export MAKEFLAGS="-j1"
     - export CMAKE_BUILD_PARALLEL_LEVEL=1
     - export NINJAFLAGS="-j1"
     - export MAX_JOBS=1
 
-    # ---- Prefer a single CUDA arch to reduce compile time/RAM ----
-    # A100 = 8.0 (common Replicate GPU)
+    # ---- Single arch to reduce compile pressure ----
     - export TORCH_CUDA_ARCH_LIST="8.0"
 
     # ---- Upgrade packaging tools ----
@@ -71,38 +70,30 @@ build:
 
     - mkdir -p /tmp/extensions
 
-    # ---- Install utils3d ----
+    # ---- CUDA extensions (hard required) ----
     - pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8
-
-    # ---- Install flash-attn ----
     - pip install flash-attn==2.7.3 --no-build-isolation
 
-    # ---- Install nvdiffrast ----
     - git clone -b v0.4.0 https://github.com/NVlabs/nvdiffrast.git /tmp/extensions/nvdiffrast
     - pip install /tmp/extensions/nvdiffrast --no-build-isolation
 
-    # ---- Install nvdiffrec ----
     - git clone -b renderutils https://github.com/JeffreyXiang/nvdiffrec.git /tmp/extensions/nvdiffrec
     - pip install /tmp/extensions/nvdiffrec --no-build-isolation
 
-    # ---- Install CuMesh ----
     - git clone https://github.com/JeffreyXiang/CuMesh.git /tmp/extensions/CuMesh --recursive
     - pip install /tmp/extensions/CuMesh --no-build-isolation
 
-    # ---- Install FlexGEMM ----
     - git clone https://github.com/JeffreyXiang/FlexGEMM.git /tmp/extensions/FlexGEMM --recursive
     - pip install /tmp/extensions/FlexGEMM --no-build-isolation
 
-    # ---- Install o-voxel ----
     - cp -r o-voxel /tmp/extensions/o-voxel
     - git clone --depth 1 https://gitlab.com/libeigen/eigen.git /tmp/extensions/o-voxel/third_party/eigen
     - pip install /tmp/extensions/o-voxel --no-build-isolation
 
     - rm -rf /tmp/extensions
 
-    # ---- Pre-download models (HF token provided via env: HF_TOKEN/HUGGINGFACE_HUB_TOKEN) ----
-    - python -c "from huggingface_hub import snapshot_download; snapshot_download('microsoft/TRELLIS.2-4B', local_dir='/src/models/TRELLIS.2-4B')"
-    - python -c "from huggingface_hub import snapshot_download; snapshot_download('facebook/dinov3-vitl16-pretrain-lvd1689m', local_dir='/src/models/dinov3')"
-    - python -c "from huggingface_hub import snapshot_download; snapshot_download('briaai/RMBG-2.0', local_dir='/src/models/rmbg')"
+    # ---- IMPORTANT: do NOT download model weights here ----
+    # Weights will be pulled lazily at runtime in predict.py
+    - mkdir -p /src/models
 
 predict: "predict.py:Predictor"

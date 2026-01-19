@@ -1,60 +1,57 @@
 name: Push to Replicate
 
 on:
-  # Manual trigger from GitHub UI
   workflow_dispatch:
-    inputs:
-      model_name:
-        description: 'Optional. Format: username/model-name (e.g. simplesketche/trellis-2). If empty, uses image from cog.yaml.'
-        required: false
-        default: ''
-
-  # Uncomment this block if you want auto-push on every commit to main
-  push:
-    branches:
-      - main
 
 jobs:
   push_to_replicate:
-    name: Build & Push Cog Model
+    name: Build & Push (Cog)
     runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    concurrency:
+      group: replicate-push
+      cancel-in-progress: true
 
     steps:
-      # Free disk space (important for large CUDA / model builds)
       - name: Free disk space
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
-          tool-cache: false
-          docker-images: false
+          tool-cache: true
           android: true
           dotnet: true
           haskell: true
-          large-packages: false
+          large-packages: true
           swap-storage: true
+          docker-images: false
 
-      # Checkout repo
-      - name: Checkout repository
+      - name: Add swap (stability for nvcc builds)
+        run: |
+          set -euxo pipefail
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
 
-      # Install Docker buildx + Cog CLI
       - name: Setup Cog
         uses: replicate/setup-cog@v2
         with:
           token: ${{ secrets.REPLICATE_CLI_AUTH_TOKEN }}
 
-      # Push model to Replicate
       - name: Push to Replicate
         env:
-          # Required for gated Hugging Face models (e.g. DINOv3)
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HUGGINGFACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
+          MAKEFLAGS: "-j1"
+          CMAKE_BUILD_PARALLEL_LEVEL: "1"
+          NINJAFLAGS: "-j1"
+          MAX_JOBS: "1"
+          TORCH_CUDA_ARCH_LIST: "8.0"
         run: |
-          echo "Starting Cog push..."
-
-          if [ -n "${{ inputs.model_name }}" ]; then
-            echo "Using model name from input: ${{ inputs.model_name }}"
-            cog push r8.im/${{ inputs.model_name }}
-          else
-            echo "Using image name from cog.yaml"
-            cog push
-          fi
+          set -euxo pipefail
+          cog push
