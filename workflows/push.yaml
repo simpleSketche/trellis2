@@ -10,9 +10,9 @@ on:
         default: ''
 
   # Uncomment this block if you want auto-push on every commit to main
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
 
 jobs:
   push_to_replicate:
