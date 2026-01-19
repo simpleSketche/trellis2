@@ -91,3 +91,5 @@ build:
     - 'python -c "from huggingface_hub import snapshot_download; snapshot_download(''briaai/RMBG-2.0'', local_dir=''/src/models/rmbg'')"'
 
 predict: "predict.py:Predictor"
+
+image: r8.im/simplesketche/trellis-2
