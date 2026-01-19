@@ -25,6 +25,15 @@ jobs:
           swap-storage: true
           docker-images: false
 
+      - name: Add swap (stability for nvcc builds)
+        run: |
+          set -euxo pipefail
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -43,10 +52,11 @@ jobs:
           HF_HOME: /tmp/hf
           TRANSFORMERS_CACHE: /tmp/hf/transformers
           HF_HUB_ENABLE_HF_TRANSFER: "1"
-          MAKEFLAGS: "-j2"
-          CMAKE_BUILD_PARALLEL_LEVEL: "2"
-          NINJAFLAGS: "-j2"
-          MAX_JOBS: "2"
+          MAKEFLAGS: "-j1"
+          CMAKE_BUILD_PARALLEL_LEVEL: "1"
+          NINJAFLAGS: "-j1"
+          MAX_JOBS: "1"
+          TORCH_CUDA_ARCH_LIST: "8.0"
         run: |
           set -euxo pipefail
           cog push r8.im/simplesketche/trellis-2
